@@ -54,7 +54,7 @@ export async function checkModule(
   const [error, report] = await to(eslint.lintFiles(files))
 
   if (error) {
-    return Promise.reject(error)
+    throw error
   }
 
   const hasWarning = report.some((item) => item.warningCount > 0)
@@ -66,12 +66,14 @@ export async function checkModule(
     const [error] = await to(outputFixes(report))
 
     if (error) {
-      return Promise.reject(error)
+      throw error
     }
   }
 
-  // Throw warning message
-  if (hasWarning && options.emitWarning) {
+  const shouldOutputErrors = hasError && options.emitError
+
+  // Throw warning message, only if there aren't any errors we'll be outputting later on
+  if (hasWarning && options.emitWarning && !shouldOutputErrors) {
     const warning = typeof result === 'string' ? result : await result
 
     if (options.failOnWarning) {
@@ -82,7 +84,7 @@ export async function checkModule(
   }
 
   // Throw error message
-  if (hasError && options.emitError) {
+  if (shouldOutputErrors) {
     const error = typeof result === 'string' ? result : await result
 
     if (options.failOnError) {
@@ -91,6 +93,4 @@ export async function checkModule(
       console.log(error)
     }
   }
-
-  return Promise.resolve()
 }
